@@ -1,0 +1,4 @@
+name = "GuEisenstatQR"
+uuid = "c90017b9-be61-4839-a9ad-b208b9b9b65e"
+authors = ["Robin Armstrong <rja243@cornell.edu>"]
+version = "0.1.0"
