@@ -60,6 +60,7 @@ function updateFactors!(i::Integer, j::Integer, k::Integer,
 			rho = sqrt(A[r, r]^2 + A[r + 1, r]^2)
 			givens = [A[r, r]/rho A[r + 1, r]/rho; -A[r + 1, r]/rho A[r, r]/rho]
 			A[r:r + 1, :] = givens*A[r:r + 1, :]
+			B[r:r + 1, :] = givens*B[r:r + 1, :]
 			Q[:, r:r + 1] = Q[:, r:r + 1]*givens'
 		end
 	end

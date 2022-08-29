@@ -40,33 +40,26 @@ end
 	end
 	
 	for i in [1, 3, k]
-		for j in [1, 3, 5]
+		for j in [1, 3, n - k]
 			params_str = "parameters are: i = "*string(i)*", j = "*string(j)
 			
-			A = A_init
-			B = B_init
-			C = C_init
-			Q = Q_init
-			perm = perm_init
-			AinvB = AinvB_init
-			gamma = gamma_init
-			omega = omega_init
+			A = deepcopy(A_init)
+			B = deepcopy(B_init)
+			C = deepcopy(C_init)
+			Q = deepcopy(Q_init)
+			perm = deepcopy(perm_init)
+			AinvB = deepcopy(AinvB_init)
+			gamma = deepcopy(gamma_init)
+			omega = deepcopy(omega_init)
 			
 			GuEisenstatQR.updateFactors!(i, j, k, Q, A, B, C, perm, AinvB, gamma, omega)
 			R = [A B; zeros(m - k, k) C]
 			
-			println("A = ")
-			display(A)
-			println("")
-			println("R = ")
-			display(R)
-			println("")
-			
 			showInfo(params_str, @test norm(M[:, perm] - Q*R) < epsilon)
 			showInfo(params_str, @test norm(tril(A, -1)) < epsilon)
 			showInfo(params_str, @test norm(Q'*Q - I(m)) < epsilon)
-			showInfo(params_str, @test perm[k] == perm_init[i])
-			showInfo(params_str, @test perm[k + 1] == perm_init[j])
+			showInfo(params_str, @test perm[k + 1] == perm_init[i])
+			showInfo(params_str, @test perm[k] == perm_init[k + j])
 			
 			Ainv_target = inv(A)
 			AinvB_target = Ainv_target*B
