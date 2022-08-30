@@ -64,6 +64,70 @@ function updateFactors!(i::Integer, j::Integer, k::Integer,
 			Q[:, r:r + 1] = Q[:, r:r + 1]*givens'
 		end
 	end
+	
+	# introducing zeros in the [1:end, 1] block of C
+	
+	v = zeros(size(C, 1))	# constructing a Householder reflector
+	v[1] = sign(C[1, 1])*norm(C[:, 1])
+	v = v + C[:, 1]
+	m = v'*v
+	
+	C[:, :] = C - 2*v*(v'*C)/m
+	Q[:, k + 1:end] = Q[:, k + 1:end] - 2*(Q[:, k + 1:end]*v)*v'/m
+	
+	# swapping columns k and k + 1
+	
+	tmp = perm[k]
+	perm[k] = perm[k + 1]
+	perm[k + 1] = tmp
+	
+	# making final updates to the factorization
+	
+	b1 = A[1:k - 1, k]
+	b2 = B[1:k - 1, 1]
+	g = A[k, k]
+	mu = B[k, 1]/g
+	nu = C[1, 1]/g
+	rho = sqrt(mu^2 + nu^2)
+	gBar = g*rho
+	c1 = B[k, 2:end]
+	c2 = C[1, 2:end]
+	c1Bar = (mu*c1 + nu*c2)/rho
+	c2Bar = (nu*c1 - mu*c2)/rho
+	u = A[1:k - 1, 1:k - 1] \ b1
+	u1 = AinvB[1:k - 1, 1]
+	
+	# updating A
+	A[1:k - 1, k] = b2
+	A[k, k] = gBar
+	
+	# updating B
+	B[1:k - 1, 1] = b1
+	B[k, 1] /= rho
+	B[k, 2:end] = c1Bar
+	
+	# updating C
+	C[1, 1] /= rho
+	C[1, 2:end] = c2Bar
+	
+	# updating AinvB
+	AinvB[1:k - 1, 1] = (nu^2*u - mu*u1)/rho^2
+	AinvB[1:k - 1, 2:k] += (nu*u*c2Bar' - u1*c1Bar')/gBar
+	AinvB[k, 1] /= rho^2
+	AinvB[k, 2:k] = c1Bar'/gBar
+	
+	# updating gamma
+	gamma[1] = C[1, 1]
+	for i = 2:length(gamma)
+		gamma[i] = sqrt(gamma[i]^2 + c2Bar[i - 1]^2 - c2[i - 1]^2)
+	end
+	
+	# updating omega
+	omega[k] = gBar
+	for i = 1:k - 1
+		# BUG: THE ARGUMENT OF THE SQRT IS COMING OUT NEGATIVE
+		omega[i] = sqrt(omega[i]^2 + (u1[i] + mu*u[i])^2/gBar^2 - u[i]^2/g^2)
+	end
 end
 
 function ssqrRank(M::Matrix, k::Integer, f::AbstractFloat)

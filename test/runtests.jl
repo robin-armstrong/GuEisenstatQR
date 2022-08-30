@@ -3,7 +3,7 @@ using LinearAlgebra
 using Random
 using Test
 
-# function to print debug messages for failed test
+# function to print debug message for a failed test
 function showInfo(msg, testResult)
 	if(typeof(testResult) != Test.Pass)
 		@info msg
