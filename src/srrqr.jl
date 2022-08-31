@@ -16,6 +16,10 @@ function updateFactors!(i::Integer, j::Integer, k::Integer,
 	
 	# putting the (k + j)th column in (k + 1)st position
 	if(j > 1)
+		tmp = perm[k + 1]
+		perm[k + 1] = perm[k + j]
+		perm[k + j] = tmp
+		
 		tmp = B[:, 1]
 		B[:, 1] = B[:, j]
 		B[:, j] = tmp
@@ -31,21 +35,17 @@ function updateFactors!(i::Integer, j::Integer, k::Integer,
 		tmp = gamma[1]
 		gamma[1] = gamma[j]
 		gamma[j] = tmp
-		
-		tmp = perm[k + 1]
-		perm[k + 1] = perm[k + j]
-		perm[k + j] = tmp
 	end
 	
 	# putting the i^th column in k^th position
 	if(i < k)
-		tmp = A[:, i]
-		A[:, i:k - 1] = A[:, i + 1:k]
-		A[:, k] = tmp
-		
 		tmp = perm[i]
 		perm[i:k - 1] = perm[i + 1:k]
 		perm[k] = tmp
+		
+		tmp = A[:, i]
+		A[:, i:k - 1] = A[:, i + 1:k]
+		A[:, k] = tmp
 		
 		tmp = omega[i]
 		omega[i:k - 1] = omega[i + 1:k]
@@ -97,6 +97,10 @@ function updateFactors!(i::Integer, j::Integer, k::Integer,
 	u = A[1:k - 1, 1:k - 1] \ b1
 	u1 = AinvB[1:k - 1, 1]
 	
+	# updating Q
+	
+	Q[:, k:k + 1] = Q[:, k:k + 1]*[mu/rho nu/rho; nu/rho -mu/rho]
+	
 	# updating A
 	A[1:k - 1, k] = b2
 	A[k, k] = gBar
@@ -112,21 +116,20 @@ function updateFactors!(i::Integer, j::Integer, k::Integer,
 	
 	# updating AinvB
 	AinvB[1:k - 1, 1] = (nu^2*u - mu*u1)/rho^2
-	AinvB[1:k - 1, 2:k] += (nu*u*c2Bar' - u1*c1Bar')/gBar
+	AinvB[1:k - 1, 2:end] += (nu*u*c2Bar' - u1*c1Bar')/gBar
 	AinvB[k, 1] /= rho^2
-	AinvB[k, 2:k] = c1Bar'/gBar
+	AinvB[k, 2:end] = c1Bar'/gBar
 	
 	# updating gamma
-	gamma[1] = C[1, 1]
-	for i = 2:length(gamma)
-		gamma[i] = sqrt(gamma[i]^2 + c2Bar[i - 1]^2 - c2[i - 1]^2)
+	gamma[1] = abs(C[1, 1])
+	for r = 2:length(gamma)
+		gamma[r] = sqrt(gamma[r]^2 + c2Bar[r - 1]^2 - c2[r - 1]^2)
 	end
 	
 	# updating omega
-	omega[k] = gBar
-	for i = 1:k - 1
-		# BUG: THE ARGUMENT OF THE SQRT IS COMING OUT NEGATIVE
-		omega[i] = sqrt(omega[i]^2 + (u1[i] + mu*u[i])^2/gBar^2 - u[i]^2/g^2)
+	omega[k] = abs(gBar)
+	for r = 1:k - 1
+		omega[r] = 1/sqrt(1/(omega[r]^2) + (u1[r] + mu*u[r])^2/gBar^2 - u[r]^2/g^2)
 	end
 end
 
