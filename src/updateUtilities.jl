@@ -12,9 +12,9 @@ where `A_new` is square and upper-triangular with order `k`, as well as `AinvB_n
 and updates (and resizes) `gamma` and `omega`. Returns `A_new`, `B_new`, `C_new`, and
 `AinvB_new`, while `Q`, `perm`, `gamma`, and `omega` are modified in place.
 """
-function updateRank!(j::Integer,
-			Q::Matrix{F}, A::Matrix{F}, B::Matrix{F}, C::Matrix{F}, perm::Vector{Itg},
-			AinvB::Matrix{F}, gamma::Vector{F}, omega::Vector{F}) where {Itg <: Integer, F <: AbstractFloat}
+function updateRank!(j::Int64,
+			Q::Matrix{F}, A::Matrix{F}, B::Matrix{F}, C::Matrix{F}, perm::Vector{Int64},
+			AinvB::Matrix{F}, gamma::Vector{F}, omega::Vector{F}) where {F <: AbstractFloat}
 	
 	k = size(A, 1) + 1
 	
@@ -22,7 +22,7 @@ function updateRank!(j::Integer,
 	
 	if(j > 1)
 		tmp = perm[k]
-		perm[k] = perm[k + j - 1]
+		perm[k] = perm[k + j - 1]	# BUG: THIS SOMETIMES TRIES TO ACCESS AN OUT OF BOUNDS ELEMENT
 		perm[k + j - 1] = tmp
 		
 		tmp = B[:, 1]
@@ -51,6 +51,7 @@ function updateRank!(j::Integer,
 	
 	C[:, :] = C - 2*v*(v'*C)
 	Q[:, k:end] = Q[:, k:end] - 2*(Q[:, k:end]*v)*v'
+	C[2:end, 1] = zeros(size(C, 1) - 1)
 	
 	# computing A_new, B_new, C_new, and AinvB_new
 	
@@ -94,9 +95,9 @@ permutation `perm`, the matrix `AinvB = inv(A)*B`, the vector `gamma` containing
 column-norms of `C`, and the vector `omega` containing the inverted row-norms of
 `inv(A)`. Modifies its arguments and has no return value.
 """
-function updateFactors!(i::Integer, j::Integer,
-						Q::Matrix{F}, A::Matrix{F}, B::Matrix{F}, C::Matrix{F}, perm::Vector{Itg},
-						AinvB::Matrix{F}, gamma::Vector{F}, omega::Vector{F}) where {Itg <: Integer, F <: AbstractFloat}
+function updateFactors!(i::Int64, j::Int64,
+						Q::Matrix{F}, A::Matrix{F}, B::Matrix{F}, C::Matrix{F}, perm::Vector{Int64},
+						AinvB::Matrix{F}, gamma::Vector{F}, omega::Vector{F}) where {F <: AbstractFloat}
 	
 	k = size(A, 1)
 	

@@ -154,3 +154,19 @@ end
 		end
 	end
 end
+
+@testset "srrqr tests" begin
+	m = 10
+	n = 10
+	epsilon = 1e-12
+	
+	M = randn(m, n)
+	Q, R, perm, k = srrqr(M)
+	
+	@test size(Q) == (m, m)
+	@test size(R) == (m, n)
+	@test length(perm) == n
+	@test norm(M[:, perm] - Q*R)/norm(M) < epsilon
+	@test norm(Q'*Q - I(m))/m < epsilon
+	@test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon
+end
