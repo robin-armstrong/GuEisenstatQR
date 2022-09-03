@@ -162,7 +162,7 @@ function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12) where {T <: Real}
 	
 	for i = 1:k
 		s = sign(R[i, i])
-		R[i, 1:end] *= s
+		R[i, i:end] *= s
 		Q[:, i] *= s
 	end
 	

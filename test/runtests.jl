@@ -177,6 +177,7 @@ end
 	k0 = 5
 	epsilon = 1e-12
 	sigmamin = 1e-8
+	tolparam = 1e-5
 	
 	M = randn(m, n)
 	
@@ -188,19 +189,17 @@ end
 	end
 	
 	for fparam in [1.1, 2.0, 5.0, 10]
-		for tolparam in [1e-5, 1e-3, .5, 1]
-			params_str = "parameters are: f = "*string(fparam)*", tol = "*string(tolparam)
-			
-			k, perm, Q, R = srrqr(M, f = fparam, tol = tolparam)
-			
-			showInfo(params_str, @test k == min(m, n))
-			showInfo(params_str, @test size(Q) == (m, m))
-			showInfo(params_str, @test size(R) == (m, n))
-			showInfo(params_str, @test length(perm) == n)
-			showInfo(params_str, @test norm(M[:, perm] - Q*R)/norm(M) < epsilon)
-			showInfo(params_str, @test norm(Q'*Q - I(m))/m < epsilon)
-			showInfo(params_str, @test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon)
-		end
+		params_str = "parameters are: f = "*string(fparam)
+		
+		k, perm, Q, R = srrqr(M, f = fparam, tol = tolparam)
+		
+		showInfo(params_str, @test k == min(m, n))
+		showInfo(params_str, @test size(Q) == (m, m))
+		showInfo(params_str, @test size(R) == (m, n))
+		showInfo(params_str, @test length(perm) == n)
+		showInfo(params_str, @test norm(M[:, perm] - Q*R)/norm(M) < epsilon)
+		showInfo(params_str, @test norm(Q'*Q - I(m))/m < epsilon)
+		showInfo(params_str, @test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon)
 	end
 	
 	for i = k0 + 1:min(m, n)
@@ -210,42 +209,40 @@ end
 	M = U*diagm(sigmaM)*V'
 	
 	for fparam in [1.1, 2.0, 5.0, 10]
-		for tolparam in [1e-5, 1e-3, .5, 1]
-			params_str = "parameters are: f = "*string(fparam)*", tol = "*string(tolparam)
-			
-			k, perm, Q, R = srrqr(M, f = fparam, tol = tolparam)
-			
-			showInfo(params_str, @test k == k0)
-			showInfo(params_str, @test size(Q) == (m, m))
-			showInfo(params_str, @test size(R) == (m, n))
-			showInfo(params_str, @test length(perm) == n)
-			showInfo(params_str, @test norm(M[:, perm] - Q*R)/norm(M) < epsilon)
-			showInfo(params_str, @test norm(Q'*Q - I(m))/m < epsilon)
-			showInfo(params_str, @test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon)
-			
-			A = R[1:k, 1:k]
-			C = R[k + 1:end, k + 1:end]
-			
-			Cmaxnorm = 0.
-			for i = 1:length(C, 2)
-				Cmaxnorm = max(Cmaxnorm, norm(C[:, i]))
-			end
-			
-			showInfo(params_str, @test Cmaxnorm <= tolparam*maxnorm)
-			
-			sigmaA = svd(A).S
-			sigmaC = svd(C).S
-			q1 = sqrt(1 + fparam*k*(size(M, 2) - k))
-			
-			for i = 1:k
-				params_str_highsigma = params_str*", i = "*string(i)
-				showInfo(params_str_highsigma, sigmaA[i] >= sigmaM[i]/q1)
-			end
-			
-			for j = 1:min(size(C, 1), size(C, 2))
-				params_str_lowsigma = params_str*", j = "*string(j)
-				showInfo(params_str_lowsigma, sigmaC[j] <= sigmaM[j + k]*q1)
-			end
+		params_str = "parameters are: f = "*string(fparam)
+		
+		k, perm, Q, R = srrqr(M, f = fparam, tol = tolparam)
+		
+		showInfo(params_str, @test k == k0)
+		showInfo(params_str, @test size(Q) == (m, m))
+		showInfo(params_str, @test size(R) == (m, n))
+		showInfo(params_str, @test length(perm) == n)
+		showInfo(params_str, @test norm(M[:, perm] - Q*R)/norm(M) < epsilon)
+		showInfo(params_str, @test norm(Q'*Q - I(m))/m < epsilon)
+		showInfo(params_str, @test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon)
+		
+		A = R[1:k, 1:k]
+		C = R[k + 1:end, k + 1:end]
+		
+		Cmaxnorm = 0.
+		for i = 1:size(C, 2)
+			Cmaxnorm = max(Cmaxnorm, norm(C[:, i]))
+		end
+		
+		showInfo(params_str, @test Cmaxnorm <= tolparam*maxnorm)
+		
+		sigmaA = svd(A).S
+		sigmaC = svd(C).S
+		q1 = sqrt(1 + fparam*k*(size(M, 2) - k))
+		
+		for i = 1:k
+			params_str_highsigma = params_str*", i = "*string(i)
+			showInfo(params_str_highsigma, sigmaA[i] >= sigmaM[i]/q1)
+		end
+		
+		for j = 1:min(size(C, 1), size(C, 2))
+			params_str_lowsigma = params_str*", j = "*string(j)
+			showInfo(params_str_lowsigma, sigmaC[j] <= sigmaM[j + k]*q1)
 		end
 	end
 end

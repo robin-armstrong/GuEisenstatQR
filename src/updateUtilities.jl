@@ -22,7 +22,7 @@ function updateRank!(j::Int64,
 	
 	if(j > 1)
 		tmp = perm[k]
-		perm[k] = perm[k + j - 1]	# BUG: THIS SOMETIMES TRIES TO ACCESS AN OUT OF BOUNDS ELEMENT
+		perm[k] = perm[k + j - 1]
 		perm[k + j - 1] = tmp
 		
 		tmp = B[:, 1]
@@ -76,7 +76,7 @@ function updateRank!(j::Int64,
 	# updating gamma
 	
 	for r = 2:length(gamma)
-		gamma[r] = sqrt(gamma[r]^2 - c[r - 1]^2)
+		gamma[r] = sqrt(max(gamma[r]^2 - c[r - 1]^2, 0.))
 	end
 	
 	deleteat!(gamma, 1)
@@ -210,7 +210,7 @@ function updateFactors!(i::Int64, j::Int64,
 	# updating gamma
 	gamma[1] = abs(C[1, 1])
 	for r = 2:length(gamma)
-		gamma[r] = sqrt(gamma[r]^2 + c2Bar[r - 1]^2 - c2[r - 1]^2)
+		gamma[r] = sqrt(max(gamma[r]^2 + c2Bar[r - 1]^2 - c2[r - 1]^2, 0.))
 	end
 	
 	# updating omega
