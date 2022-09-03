@@ -13,8 +13,8 @@ and updates (and resizes) `gamma` and `omega`. Returns `A_new`, `B_new`, `C_new`
 `AinvB_new`, while `Q`, `perm`, `gamma`, and `omega` are modified in place.
 """
 function updateRank!(j::Int64,
-			Q::Matrix{F}, A::Matrix{F}, B::Matrix{F}, C::Matrix{F}, perm::Vector{Int64},
-			AinvB::Matrix{F}, gamma::Vector{F}, omega::Vector{F}) where {F <: AbstractFloat}
+			Q::Matrix{Float64}, A::Matrix{Float64}, B::Matrix{Float64}, C::Matrix{Float64}, perm::Vector{Int64},
+			AinvB::Matrix{Float64}, gamma::Vector{Float64}, omega::Vector{Float64})
 	
 	k = size(A, 1) + 1
 	
@@ -96,8 +96,8 @@ column-norms of `C`, and the vector `omega` containing the inverted row-norms of
 `inv(A)`. Modifies its arguments and has no return value.
 """
 function updateFactors!(i::Int64, j::Int64,
-						Q::Matrix{F}, A::Matrix{F}, B::Matrix{F}, C::Matrix{F}, perm::Vector{Int64},
-						AinvB::Matrix{F}, gamma::Vector{F}, omega::Vector{F}) where {F <: AbstractFloat}
+						Q::Matrix{Float64}, A::Matrix{Float64}, B::Matrix{Float64}, C::Matrix{Float64}, perm::Vector{Int64},
+						AinvB::Matrix{Float64}, gamma::Vector{Float64}, omega::Vector{Float64})
 	
 	k = size(A, 1)
 	

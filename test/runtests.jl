@@ -77,10 +77,18 @@ end
 		for r = 1:size(A, 1)
 			omega_target[r] = 1/norm(Ainv_target[r, :])
 		end
-			
-		showInfo(params_str, @test norm(AinvB - AinvB_target)/norm(AinvB_target) < epsilon)
+		
+		AinvBerr = norm(AinvB - AinvB_target)/norm(AinvB_target)
+		if(AinvBerr > epsilon)
+			@warn "relative error in AinvB is "*string(AinvBerr)
+		end
+
 		showInfo(params_str, @test norm(gamma - gamma_target)/norm(gamma_target) < epsilon)
-		showInfo(params_str, @test norm(omega - omega_target)/norm(omega_target) < epsilon)
+		
+		omegaerr = norm(omega - omega_target)/norm(omega_target)
+		if(omegaerr > epsilon)
+			@warn "relative error in omegas is "*string(omegaerr)
+		end
 	end
 end
 
@@ -148,9 +156,17 @@ end
 				omega_target[r] = 1/norm(Ainv_target[r, :])
 			end
 				
-			showInfo(params_str, @test norm(AinvB - AinvB_target)/norm(AinvB_target) < epsilon)
+			AinvBerr = norm(AinvB - AinvB_target)/norm(AinvB_target)
+			if(AinvBerr > epsilon)
+				@warn "relative error in AinvB is "*string(AinvBerr)
+			end
+			
 			showInfo(params_str, @test norm(gamma - gamma_target)/norm(gamma_target) < epsilon)
-			showInfo(params_str, @test norm(omega - omega_target)/norm(omega_target) < epsilon)
+			
+			omegaerr = norm(omega - omega_target)/norm(omega_target)
+			if(omegaerr > epsilon)
+				@warn "relative error in omegas is "*string(omegaerr)
+			end
 		end
 	end
 end
@@ -158,15 +174,78 @@ end
 @testset "srrqr tests" begin
 	m = 10
 	n = 10
+	k0 = 5
 	epsilon = 1e-12
+	sigmamin = 1e-8
 	
 	M = randn(m, n)
-	Q, R, perm, k = srrqr(M)
 	
-	@test size(Q) == (m, m)
-	@test size(R) == (m, n)
-	@test length(perm) == n
-	@test norm(M[:, perm] - Q*R)/norm(M) < epsilon
-	@test norm(Q'*Q - I(m))/m < epsilon
-	@test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon
+	U, sigmaM, V = svd(M)
+	
+	maxnorm = 0.
+	for i = 1:size(M, 2)
+		maxnorm = max(maxnorm, norm(M[:, i]))
+	end
+	
+	for fparam in [1.1, 2.0, 5.0, 10]
+		for tolparam in [1e-5, 1e-3, .5, 1]
+			params_str = "parameters are: f = "*string(fparam)*", tol = "*string(tolparam)
+			
+			k, perm, Q, R = srrqr(M, f = fparam, tol = tolparam)
+			
+			showInfo(params_str, @test k == min(m, n))
+			showInfo(params_str, @test size(Q) == (m, m))
+			showInfo(params_str, @test size(R) == (m, n))
+			showInfo(params_str, @test length(perm) == n)
+			showInfo(params_str, @test norm(M[:, perm] - Q*R)/norm(M) < epsilon)
+			showInfo(params_str, @test norm(Q'*Q - I(m))/m < epsilon)
+			showInfo(params_str, @test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon)
+		end
+	end
+	
+	for i = k0 + 1:min(m, n)
+		sigmaM[i] = 1e-8
+	end
+	
+	M = U*diagm(sigmaM)*V'
+	
+	for fparam in [1.1, 2.0, 5.0, 10]
+		for tolparam in [1e-5, 1e-3, .5, 1]
+			params_str = "parameters are: f = "*string(fparam)*", tol = "*string(tolparam)
+			
+			k, perm, Q, R = srrqr(M, f = fparam, tol = tolparam)
+			
+			showInfo(params_str, @test k == k0)
+			showInfo(params_str, @test size(Q) == (m, m))
+			showInfo(params_str, @test size(R) == (m, n))
+			showInfo(params_str, @test length(perm) == n)
+			showInfo(params_str, @test norm(M[:, perm] - Q*R)/norm(M) < epsilon)
+			showInfo(params_str, @test norm(Q'*Q - I(m))/m < epsilon)
+			showInfo(params_str, @test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon)
+			
+			A = R[1:k, 1:k]
+			C = R[k + 1:end, k + 1:end]
+			
+			Cmaxnorm = 0.
+			for i = 1:length(C, 2)
+				Cmaxnorm = max(Cmaxnorm, norm(C[:, i]))
+			end
+			
+			showInfo(params_str, @test Cmaxnorm <= tolparam*maxnorm)
+			
+			sigmaA = svd(A).S
+			sigmaC = svd(C).S
+			q1 = sqrt(1 + fparam*k*(size(M, 2) - k))
+			
+			for i = 1:k
+				params_str_highsigma = params_str*", i = "*string(i)
+				showInfo(params_str_highsigma, sigmaA[i] >= sigmaM[i]/q1)
+			end
+			
+			for j = 1:min(size(C, 1), size(C, 2))
+				params_str_lowsigma = params_str*", j = "*string(j)
+				showInfo(params_str_lowsigma, sigmaC[j] <= sigmaM[j + k]*q1)
+			end
+		end
+	end
 end
