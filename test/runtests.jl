@@ -53,9 +53,9 @@ end
 		
 		A, B, C, AinvB = GuEisenstatQR.updateRank!(j, Q, A, B, C, perm, AinvB, gamma, omega)
 		
-		showInfo(params_str, @test size(A) == (k + 1, k + 1))
-		showInfo(params_str, @test size(B) == (k + 1, n - k - 1))
-		showInfo(params_str, @test size(C) == (m - k - 1, n - k - 1))
+		showInfo(params_str, @test size(A) == (size(A_init, 1) + 1, size(A_init, 2) + 1))
+		showInfo(params_str, @test size(B) == (size(B_init, 1) + 1, size(B_init, 2) - 1))
+		showInfo(params_str, @test size(C) == (size(C_init, 1) - 1, size(C_init, 2) - 1))
 		
 		R = [A B; zeros(size(C, 1), size(A, 2)) C]
 		
@@ -237,12 +237,12 @@ end
 		
 		for i = 1:k
 			params_str_highsigma = params_str*", i = "*string(i)
-			showInfo(params_str_highsigma, sigmaA[i] >= sigmaM[i]/q1)
+			showInfo(params_str_highsigma, @test sigmaA[i] >= sigmaM[i]/q1)
 		end
 		
 		for j = 1:min(size(C, 1), size(C, 2))
 			params_str_lowsigma = params_str*", j = "*string(j)
-			showInfo(params_str_lowsigma, sigmaC[j] <= sigmaM[j + k]*q1)
+			showInfo(params_str_lowsigma, @test sigmaC[j] <= sigmaM[j + k]*q1)
 		end
 	end
 end

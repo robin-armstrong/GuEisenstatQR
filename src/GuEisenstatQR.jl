@@ -1,6 +1,6 @@
 module GuEisenstatQR
 
-export srrqrRank, srrqr, SRRQR
+export srrqr, SRRQR
 
 include("returnstructs.jl")
 include("updateUtilities.jl")
