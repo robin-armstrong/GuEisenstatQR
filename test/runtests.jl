@@ -11,9 +11,9 @@ function showInfo(msg, testResult)
 end
 
 @testset "test updateRank!" begin
-	m = 10
-	n = 10
-	k = 5
+	m = 150
+	n = 150
+	k = 75
 	epsilon = 1e-12
 	
 	Q_init = Matrix(qr(randn(m, m)).Q)
@@ -26,17 +26,24 @@ end
 	A_init = R_init[1:k, 1:k]
 	B_init = R_init[1:k, k + 1:n]
 	C_init = R_init[k + 1:m, k + 1:n]
-	Ainv_init = inv(A_init)
+	
+	Ainv_init = Matrix{Float64}(undef, k, k)
+	for i = 1:k
+		ei = zeros(k)
+		ei[i] = 1.
+		Ainv_init[:, i] = A_init \ ei
+	end
+	
 	AinvB_init = Ainv_init*B_init
 	
 	gamma_init = Vector{Float64}(undef, n - k)
 	for r = 1:n - k
-		gamma_init[r] = norm(C_init[:, r])
+		gamma_init[r] = norm(C_init[:, r])^2
 	end
 	
 	omega_init = Vector{Float64}(undef, k)
 	for r = 1:k
-		omega_init[r] = 1/norm(Ainv_init[r, :])
+		omega_init[r] = norm(Ainv_init[r, :])^2
 	end
 	
 	for j in [1, 3, n - k]
@@ -65,17 +72,23 @@ end
 		showInfo(params_str, @test perm[k + j] == perm_init[k + 1])
 		showInfo(params_str, @test perm[k + 1] == perm_init[k + j])
 		
-		Ainv_target = inv(A)
+		Ainv_target = Matrix{Float64}(undef, k + 1, k + 1)
+		for i = 1:k + 1
+			ei = zeros(k + 1)
+			ei[i] = 1.
+			Ainv_target[:, i] = A \ ei
+		end
+		
 		AinvB_target = Ainv_target*B
 		
 		gamma_target = Vector{Float64}(undef, size(C, 2))
 		for r = 1:size(C, 2)
-			gamma_target[r] = norm(C[:, r])
+			gamma_target[r] = norm(C[:, r])^2
 		end
 
 		omega_target = Vector{Float64}(undef, size(A, 1))
 		for r = 1:size(A, 1)
-			omega_target[r] = 1/norm(Ainv_target[r, :])
+			omega_target[r] = norm(Ainv_target[r, :])^2
 		end
 		
 		AinvBerr = norm(AinvB - AinvB_target)/norm(AinvB_target)
@@ -93,9 +106,9 @@ end
 end
 
 @testset "test updateFactors!" begin
-	m = 10
-	n = 10
-	k = 5
+	m = 150
+	n = 150
+	k = 75
 	epsilon = 1e-12
 	
 	Q_init = Matrix(qr(randn(m, m)).Q)
@@ -108,17 +121,24 @@ end
 	A_init = R_init[1:k, 1:k]
 	B_init = R_init[1:k, k + 1:n]
 	C_init = R_init[k + 1:m, k + 1:n]
-	Ainv_init = inv(A_init)
+	
+	Ainv_init = Matrix{Float64}(undef, k, k)
+	for i = 1:k
+		ei = zeros(k)
+		ei[i] = 1.
+		Ainv_init[:, i] = A_init \ ei
+	end
+	
 	AinvB_init = Ainv_init*B_init
 	
 	gamma_init = Vector{Float64}(undef, n - k)
 	for r = 1:n - k
-		gamma_init[r] = norm(C_init[:, r])
+		gamma_init[r] = norm(C_init[:, r])^2
 	end
 	
 	omega_init = Vector{Float64}(undef, k)
 	for r = 1:k
-		omega_init[r] = 1/norm(Ainv_init[r, :])
+		omega_init[r] = norm(Ainv_init[r, :])^2
 	end
 	
 	for i in [1, 3, k]
@@ -143,17 +163,23 @@ end
 			showInfo(params_str, @test perm[k + 1] == perm_init[i])
 			showInfo(params_str, @test perm[k] == perm_init[k + j])
 			
-			Ainv_target = inv(A)
+			Ainv_target = Matrix{Float64}(undef, k, k)
+			for i = 1:k
+				ei = zeros(k)
+				ei[i] = 1.
+				Ainv_target[:, i] = A \ ei
+			end
+			
 			AinvB_target = Ainv_target*B
 			
 			gamma_target = Vector{Float64}(undef, n - k)
 			for r = 1:n - k
-				gamma_target[r] = norm(C[:, r])
+				gamma_target[r] = norm(C[:, r])^2
 			end
 	
 			omega_target = Vector{Float64}(undef, k)
 			for r = 1:k
-				omega_target[r] = 1/norm(Ainv_target[r, :])
+				omega_target[r] = norm(Ainv_target[r, :])^2
 			end
 				
 			AinvBerr = norm(AinvB - AinvB_target)/norm(AinvB_target)
@@ -172,12 +198,10 @@ end
 end
 
 @testset "srrqr tests" begin
-	m = 10
-	n = 10
-	k0 = 5
+	m = 150
+	n = 150
 	epsilon = 1e-12
-	sigmamin = 1e-8
-	tolparam = 1e-5
+	tolparam = 1e-8
 	
 	M = randn(m, n)
 	
@@ -185,10 +209,10 @@ end
 	
 	maxnorm = 0.
 	for i = 1:size(M, 2)
-		maxnorm = max(maxnorm, norm(M[:, i]))
+		maxnorm = max(maxnorm, norm(M[:, i])^2)
 	end
 	
-	for fparam in [1.1, 2.0, 5.0, 10]
+	for fparam in [1.001, 1.1, 1.5, 2]
 		params_str = "parameters are: f = "*string(fparam)
 		
 		k, perm, Q, R = srrqr(M, f = fparam, tol = tolparam)
@@ -202,13 +226,16 @@ end
 		showInfo(params_str, @test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon)
 	end
 	
+	k0 = 75
+	sigmamin = 1e-8
+
 	for i = k0 + 1:min(m, n)
-		sigmaM[i] = 1e-8
+		sigmaM[i] = sigmamin
 	end
 	
 	M = U*diagm(sigmaM)*V'
 	
-	for fparam in [1.1, 2.0, 5.0, 10]
+	for fparam in [1.001, 1.1, 1.5, 2]
 		params_str = "parameters are: f = "*string(fparam)
 		
 		k, perm, Q, R = srrqr(M, f = fparam, tol = tolparam)
@@ -226,10 +253,42 @@ end
 		
 		Cmaxnorm = 0.
 		for i = 1:size(C, 2)
-			Cmaxnorm = max(Cmaxnorm, norm(C[:, i]))
+			Cmaxnorm = max(Cmaxnorm, norm(C[:, i])^2)
 		end
 		
 		showInfo(params_str, @test Cmaxnorm <= tolparam*maxnorm)
+		
+		sigmaA = svd(A).S
+		sigmaC = svd(C).S
+		q1 = sqrt(1 + fparam*k*(size(M, 2) - k))
+		
+		for i = 1:k
+			params_str_highsigma = params_str*", i = "*string(i)
+			showInfo(params_str_highsigma, @test sigmaA[i] >= sigmaM[i]/q1)
+		end
+		
+		for j = 1:min(size(C, 1), size(C, 2))
+			params_str_lowsigma = params_str*", j = "*string(j)
+			showInfo(params_str_lowsigma, @test sigmaC[j] <= sigmaM[j + k]*q1)
+		end
+	end
+	
+	for fparam in [1.001, 1.1, 1.5, 2]
+		params_str = "parameters are: f = "*string(fparam)
+		
+		kmaxparam = 20
+		k, perm, Q, R = srrqr(M, f = fparam, tol = tolparam, kmax = kmaxparam)
+		
+		showInfo(params_str, @test k == kmaxparam)
+		showInfo(params_str, @test size(Q) == (m, m))
+		showInfo(params_str, @test size(R) == (m, n))
+		showInfo(params_str, @test length(perm) == n)
+		showInfo(params_str, @test norm(M[:, perm] - Q*R)/norm(M) < epsilon)
+		showInfo(params_str, @test norm(Q'*Q - I(m))/m < epsilon)
+		showInfo(params_str, @test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon)
+		
+		A = R[1:k, 1:k]
+		C = R[k + 1:end, k + 1:end]
 		
 		sigmaA = svd(A).S
 		sigmaC = svd(C).S

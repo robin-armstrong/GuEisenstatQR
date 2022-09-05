@@ -1,5 +1,5 @@
 """
-	srrqr(M; f = 2.0, tol = 1e-12, numrank = nothing)
+	srrqr(M; f = 2.0, tol = 1e-12, kmax = minimum(size(M)))
 
 Compute a strong rank-revealing QR factorization of `M` using the algorithm of Gu
 and Eisenstat (1996). In other words, compute a permutation `perm`, an orthogonal
@@ -17,24 +17,26 @@ columns in `M`, as well as
 \$\\sigma_j(C) \\leq \\sigma_{k + j}(M) \\sqrt{1 + f^2 k(n - k)}\$
 ```
 
-for ```\$1 \\leq j \\leq n - k\$```. If a value for `numrank` is provided, then `k` is set
-equal to that value. Otherwise, `k` is chosen so that the maximum column norm of `C`
-is at most `tol` times the maximum column norm of `M`.
+for ```\$1 \\leq j \\leq n - k\$```. The algorithm chooses `k` large enough that the
+maximum squared column norm of `C` is at most `tol` times the maximum squared column
+norm of `M`, subject to the restriction `k <= kmax`. If `kmax == minimum(size(M))`,
+then `k` serves as an estimate for the numerical rank of `M`. Setting `kmax < minimum(size(M))`
+restricts the number of column pivots that the algorithm computes, thus shortening
+the computation time.
 """
-function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, numrank::Union{Integer, Nothing} = nothing) where {T <: Real}
+function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, kmax::Integer = minimum(size(M))) where {T <: Real}
+	L = minimum(size(M))
+	
 	if(f < 1)
 		throw(ArgumentError("f must be at least 1.0"))
 	elseif(tol <= 0)
 		throw(ArgumentError("tol must be positive"))
-	elseif(min(size(M, 1), size(M, 2)) <= 1)
+	elseif(L <= 1)
 		throw(ArgumentError("matrix must have at least 2 rows and at least 2 columns"))
-	elseif(numrank != nothing)
-		if((numrank < 1) || (numrank > min(size(M, 1), size(M, 2))))
-			throw(ArgumentError("numrank must be at least 1 and at most the smaller dimension of the matrix"))
-		end
+	elseif((kmax < 1) || (kmax > L))
+		throw(ArgumentError("kmax must be at least 1 and at most the smaller dimension of the matrix"))
 	end
 	
-	rankspecified = numrank != nothing
 	M = Matrix{Float64}(M)
 	
 	# finding the largest column of M
@@ -52,7 +54,7 @@ function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, numrank::Union{In
 	
 	# normalizing the tolerance to the size of the matrix
 	
-	delta = tol*maxnorm
+	delta = tol*maxnorm^2
 	
 	# initializing the factorization
 	
@@ -86,43 +88,17 @@ function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, numrank::Union{In
 	
 	gamma = Vector{Float64}(undef, size(C, 2))
 	for i = 1:length(gamma)
-		gamma[i] = norm(C[:, i])
+		gamma[i] = norm(C[:, i])^2
 	end
 	
 	omega = Vector{Float64}(undef, 1)
-	omega[1] = abs(A[1, 1])
+	omega[1] = 1/A[1, 1]^2
 	
-	if(rankspecified)
-		for i = 2:min(numrank, size(M, 1) - 1, size(M, 2) - 1)
-			# finding the largest column of C to bring into the basis
-			
-			maxnorm = 0.
-			jmax = 0
-			
-			for j = 1:size(C, 2)
-				nrm = norm(C[:, j])
-				if(nrm > maxnorm)
-					maxnorm = nrm
-					jmax = j
-				end
-			end
-			
-			# pivoting that column into the basis and updating the factorization
-			
-			A, B, C, AinvB = updateRank!(jmax, Q, A, B, C, perm, AinvB, gamma, omega)
-		end
-	else
-		numrank = 1
-	end
+	# this loop computes the SRRQR
 	
-	if(numrank == min(size(M, 1), size(M, 2)))
-		R = [A B; zeros(size(C, 1), size(A, 2)) C]
-		return SRRQR(numrank, perm, Q, R)
-	end
-	
-	while(numrank < min(numrank, size(M, 1) - 1, size(M, 2) - 1))
-		# making column pivots to compute a strong rank-revealing QR at the current rank
-		
+	k = 1
+	while(k < L - 1)
+		# this loop makes column pivots to compute a strong rank-revealing QR for the current rank estimate
 		while(true)
 			ilarge = 0
 			jlarge = 0
@@ -132,7 +108,7 @@ function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, numrank::Union{In
 				!foundLargeEntry || break
 				
 				for j = 1:size(B, 2)
-					rho = AinvB[i, j]^2 + (gamma[j]/omega[i])^2
+					rho = AinvB[i, j]^2 + gamma[j]*omega[i]
 					
 					if(rho > f^2)
 						ilarge = i
@@ -143,12 +119,15 @@ function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, numrank::Union{In
 			end
 			
 			foundLargeEntry || break
-			updateFactors!(ilarge, jlarge, A, B, C, Q, perm, AinvB, gamma, omega)
+			updateFactors!(ilarge, jlarge, Q, A, B, C, perm, AinvB, gamma, omega)
 		end
 		
-		!rankspecified || break
+		# respecting user bounds on the size of A
+		if(k == kmax)
+			break
+		end
 		
-		# looking for a large column in C
+		# looking for a large column in C to bring into the basis for a rank update
 		
 		maxgamma = delta
 		jmax = 0
@@ -160,29 +139,29 @@ function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, numrank::Union{In
 			end
 		end
 		
-		# if we found a large column then we pivot it into the basis, update the rank, and continue
+		# if we found a large column then we pivot it into the basis, update the rank estimate, and continue
 		
 		if(jmax == 0)
 			break
 		else
 			A, B, C, AinvB = updateRank!(jmax, Q, A, B, C, perm, AinvB, gamma, omega)
-			numrank += 1
+			k += 1
 		end
 	end
 	
-	# we make a final update to the rank, if necessary
-	if(numrank == min(numrank, size(M, 1) - 1, size(M, 2) - 1))
-		numrank += (gamma[1] > delta ? 1 : 0)
+	# we make a final update to the rank estimate, if necessary
+	if((k == L - 1) && (kmax == L))
+		k += (gamma[1] > delta ? 1 : 0)
 	end
 	
+	R = [A B; zeros(size(C, 1), size(A, 2)) C]
+	
 	# ensuring that A has strictly positive diagonal entries
-	for i = 1:size(A, 1)
-		s = sign(A[i, i])
-		A[i, i:end] *= s
+	for i = 1:k
+		s = sign(R[i, i])
+		R[i, i:end] *= s
 		Q[:, i] *= s
 	end
 	
-	# returning the factorization
-	R = [A B; zeros(size(C, 1), size(A, 2)) C]
-	return SRRQR(numrank, perm, Q, R)
+	return SRRQR(k, perm, Q, R)
 end

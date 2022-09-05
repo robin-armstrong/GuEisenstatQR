@@ -5,7 +5,7 @@ using LinearAlgebra
 
 Function to update the pivoted QR factorization `M[:, perm] = Q*R`, where `R` has the
 block form `[A B; 0 C]` and `A` is a square upper-triangular matrix. Requires `gamma`,
-the vector of column-norms of `C`, and `omega`, the vector of inverted row-norms of 
+the vector of squared column-norms of `C`, and `omega`, the vector of squared row-norms of 
 `inv(A)`. Permutes column `k + j - 1` to position `k`, where `k - 1` is the dimension of
 `A`, updating `perm` accordingly. Then computes `M[:, perm] = Q_new*[A_new B_new; 0 C_new]`,
 where `A_new` is square and upper-triangular with order `k`, as well as `AinvB_new = inv(A_new)*B_new`,
@@ -67,16 +67,20 @@ function updateRank!(j::Int64,
 	
 	# updating omega
 	
-	append!(omega, abs(g))
+	append!(omega, 1/g^2)
 	
 	for r = 1:k - 1
-		omega[r] = 1/sqrt(1/(omega[r]^2) + u[r]^2/g^2)
+		omega[r] += u[r]^2/g^2
 	end
 	
 	# updating gamma
 	
 	for r = 2:length(gamma)
-		gamma[r] = sqrt(max(gamma[r]^2 - c[r - 1]^2, 0.))
+		gamma[r] = gamma[r] - c[r - 1]^2
+		
+		if(gamma[r] < 0)
+			@warn "gamma["*string(r)*"] is negative.\ngamma["*string(r)*"] = "*string(gamma[r])
+		end
 	end
 	
 	deleteat!(gamma, 1)
@@ -92,7 +96,7 @@ block form `[A B; 0 C]` and `A` is a square upper-triangular matrix. Permutes co
 `i` to position `k + 1` and column `k + j` to position `k`, where `k` is the dimension
 of `A`. Then updates the orthogonal factor `Q`, the triangular factor `R`, the column
 permutation `perm`, the matrix `AinvB = inv(A)*B`, the vector `gamma` containing the
-column-norms of `C`, and the vector `omega` containing the inverted row-norms of
+squared column-norms of `C`, and the vector `omega` containing the squared row-norms of
 `inv(A)`. Modifies its arguments and has no return value.
 """
 function updateFactors!(i::Int64, j::Int64,
@@ -147,6 +151,7 @@ function updateFactors!(i::Int64, j::Int64,
 			rho = sqrt(A[r, r]^2 + A[r + 1, r]^2)
 			givens = [A[r, r]/rho A[r + 1, r]/rho; -A[r + 1, r]/rho A[r, r]/rho]
 			A[r:r + 1, :] = givens*A[r:r + 1, :]
+			A[r + 1, r] = 0.
 			B[r:r + 1, :] = givens*B[r:r + 1, :]
 			Q[:, r:r + 1] = Q[:, r:r + 1]*givens'
 		end
@@ -208,14 +213,22 @@ function updateFactors!(i::Int64, j::Int64,
 	AinvB[k, 2:end] = c1Bar'/gBar
 	
 	# updating gamma
-	gamma[1] = abs(C[1, 1])
+	gamma[1] = C[1, 1]^2
 	for r = 2:length(gamma)
-		gamma[r] = sqrt(max(gamma[r]^2 + c2Bar[r - 1]^2 - c2[r - 1]^2, 0.))
+		gamma[r] = gamma[r] + c2Bar[r - 1]^2 - c2[r - 1]^2
+		
+		if(gamma[r] < 0)
+			@warn "gamma["*string(r)*"] is negative.\ngamma["*string(r)*"] = "*string(gamma[r])
+		end
 	end
 	
 	# updating omega
-	omega[k] = abs(gBar)
+	omega[k] = 1/gBar^2
 	for r = 1:k - 1
-		omega[r] = 1/sqrt(1/(omega[r]^2) + (u1[r] + mu*u[r])^2/gBar^2 - u[r]^2/g^2)
+		omega[r] += (u1[r] + mu*u[r])^2/gBar^2 - u[r]^2/g^2
+		
+		if(omega[r] < 0)
+			@warn "omega["*string(r)*"] is negative.\nomega["*string(r)*"] = "*string(omega[r])
+		end
 	end
 end
