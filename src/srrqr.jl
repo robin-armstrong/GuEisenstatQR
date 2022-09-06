@@ -6,23 +6,26 @@ and Eisenstat (1996). In other words, compute a permutation `perm`, an orthogona
 matrix `Q`, and a matrix `R = [A B; 0 C]` where `A` is square and upper-triangular
 with strictly positive diagonal entries, such that `M[:, perm]` is equal to `Q*R`.
 
-The factorization satisfies the inequalities
+The factorization satisfies the singular value inequalities
 ```
 \$\\sigma_i(A) \\geq \\frac{ \\sigma_i(M) }{ \\sqrt{1 + f^2 k(n - k)} }\$
 ```
 
-for ```\$1 \\leq i \\leq k\$```, where `k` is the dimension of `A` and `n` is the number of
-columns in `M`, as well as
+for ```\$1 \\leq i \\leq k\$```, where `k` is the dimension of `A` and `n` is the
+number of columns in `M`, as well as
 ```
 \$\\sigma_j(C) \\leq \\sigma_{k + j}(M) \\sqrt{1 + f^2 k(n - k)}\$
 ```
 
-for ```\$1 \\leq j \\leq n - k\$```. The algorithm chooses `k` large enough that the
-maximum squared column norm of `C` is at most `tol` times the maximum squared column
-norm of `M`, subject to the restriction `k <= kmax`. If `kmax == minimum(size(M))`,
-then `k` serves as an estimate for the numerical rank of `M`. Setting `kmax < minimum(size(M))`
-restricts the number of column pivots that the algorithm computes, thus shortening
-the computation time.
+for ```\$1 \\leq j \\leq n - k\$```. In addition, the elements of interpolation 
+matrix `inv(A)*B` are bounded in magnitude by `f`.
+
+The algorithm chooses `k` large enough that the maximum squared column norm of `C` 
+is at most `tol` times the maximum squared column norm of `M`, subject to the
+restriction `k <= kmax`. If `kmax == minimum(size(M))`, then `k` serves as an
+estimate for the numerical rank of `M`. Setting `kmax < minimum(size(M))` restricts
+the number of column pivots that the algorithm computes, thus shortening the 
+computation time.
 """
 function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, kmax::Integer = minimum(size(M))) where {T <: Real}
 	L = minimum(size(M))

@@ -17,8 +17,7 @@ end
 	epsilon = 1e-12
 	
 	Q_init = Matrix(qr(randn(m, m)).Q)
-	R_init = randn(m, n)
-	R_init[:, 1:min(m, n)] = triu(R_init[:, 1:min(m, n)])
+	R_init = qr(randn(m, n)).R
 	perm_init = randperm(n)
 	M = Matrix{Float64}(undef, m, n)
 	M[:, perm_init] = Q_init*R_init
@@ -112,8 +111,7 @@ end
 	epsilon = 1e-12
 	
 	Q_init = Matrix(qr(randn(m, m)).Q)
-	R_init = randn(m, n)
-	R_init[:, 1:min(m, n)] = triu(R_init[:, 1:min(m, n)])
+	R_init = qr(randn(m, n)).R
 	perm_init = randperm(n)
 	M = Matrix{Float64}(undef, m, n)
 	M[:, perm_init] = Q_init*R_init
@@ -197,7 +195,7 @@ end
 	end
 end
 
-@testset "srrqr tests" begin
+@testset "srrqr tests (full rank)" begin
 	m = 150
 	n = 150
 	epsilon = 1e-12
@@ -224,53 +222,6 @@ end
 		showInfo(params_str, @test norm(M[:, perm] - Q*R)/norm(M) < epsilon)
 		showInfo(params_str, @test norm(Q'*Q - I(m))/m < epsilon)
 		showInfo(params_str, @test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon)
-	end
-	
-	k0 = 75
-	sigmamin = 1e-8
-
-	for i = k0 + 1:min(m, n)
-		sigmaM[i] = sigmamin
-	end
-	
-	M = U*diagm(sigmaM)*V'
-	
-	for fparam in [1.001, 1.1, 1.5, 2]
-		params_str = "parameters are: f = "*string(fparam)
-		
-		k, perm, Q, R = srrqr(M, f = fparam, tol = tolparam)
-		
-		showInfo(params_str, @test k == k0)
-		showInfo(params_str, @test size(Q) == (m, m))
-		showInfo(params_str, @test size(R) == (m, n))
-		showInfo(params_str, @test length(perm) == n)
-		showInfo(params_str, @test norm(M[:, perm] - Q*R)/norm(M) < epsilon)
-		showInfo(params_str, @test norm(Q'*Q - I(m))/m < epsilon)
-		showInfo(params_str, @test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon)
-		
-		A = R[1:k, 1:k]
-		C = R[k + 1:end, k + 1:end]
-		
-		Cmaxnorm = 0.
-		for i = 1:size(C, 2)
-			Cmaxnorm = max(Cmaxnorm, norm(C[:, i])^2)
-		end
-		
-		showInfo(params_str, @test Cmaxnorm <= tolparam*maxnorm)
-		
-		sigmaA = svd(A).S
-		sigmaC = svd(C).S
-		q1 = sqrt(1 + fparam*k*(size(M, 2) - k))
-		
-		for i = 1:k
-			params_str_highsigma = params_str*", i = "*string(i)
-			showInfo(params_str_highsigma, @test sigmaA[i] >= sigmaM[i]/q1)
-		end
-		
-		for j = 1:min(size(C, 1), size(C, 2))
-			params_str_lowsigma = params_str*", j = "*string(j)
-			showInfo(params_str_lowsigma, @test sigmaC[j] <= sigmaM[j + k]*q1)
-		end
 	end
 	
 	for fparam in [1.001, 1.1, 1.5, 2]
@@ -302,6 +253,131 @@ end
 		for j = 1:min(size(C, 1), size(C, 2))
 			params_str_lowsigma = params_str*", j = "*string(j)
 			showInfo(params_str_lowsigma, @test sigmaC[j] <= sigmaM[j + k]*q1)
+		end
+	end
+end
+
+@testset "srrqr tests (rank deficient)" begin
+	m = 150
+	n = 150
+	epsilon = 1e-12
+	tolparam = 1e-8
+	k0 = 75
+	
+	M = randn(m, n)
+	
+	U, sigmaM, V = svd(M)
+	sigmamin = 1e-8
+
+	for i = k0 + 1:min(m, n)
+		sigmaM[i] = sigmamin
+	end
+	
+	M = U*diagm(sigmaM)*V'
+	
+	maxnorm = 0.
+	for i = 1:size(M, 2)
+		maxnorm = max(maxnorm, norm(M[:, i])^2)
+	end
+	
+	for fparam in [1.001, 1.1, 1.5, 2]
+		params_str = "parameters are: f = "*string(fparam)
+		
+		k, perm, Q, R = srrqr(M, f = fparam, tol = tolparam)
+		
+		showInfo(params_str, @test k == k0)
+		showInfo(params_str, @test size(Q) == (m, m))
+		showInfo(params_str, @test size(R) == (m, n))
+		showInfo(params_str, @test length(perm) == n)
+		showInfo(params_str, @test norm(M[:, perm] - Q*R)/norm(M) < epsilon)
+		showInfo(params_str, @test norm(Q'*Q - I(m))/m < epsilon)
+		showInfo(params_str, @test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon)
+		
+		A = R[1:k, 1:k]
+		B = R[1:k, k + 1:end]
+		C = R[k + 1:end, k + 1:end]
+		
+		showInfo(params_str, @test maximum(broadcast(abs, inv(A)*B)) <= fparam)
+		
+		Cmaxnorm = 0.
+		for i = 1:size(C, 2)
+			Cmaxnorm = max(Cmaxnorm, norm(C[:, i])^2)
+		end
+		
+		showInfo(params_str, @test Cmaxnorm <= tolparam*maxnorm)
+		
+		sigmaA = svd(A).S
+		sigmaC = svd(C).S
+		q1 = sqrt(1 + fparam*k*(size(M, 2) - k))
+		
+		for i = 1:k
+			params_str_highsigma = params_str*", i = "*string(i)
+			showInfo(params_str_highsigma, @test sigmaA[i] >= sigmaM[i]/q1)
+		end
+		
+		for j = 1:min(size(C, 1), size(C, 2))
+			params_str_lowsigma = params_str*", j = "*string(j)
+			showInfo(params_str_lowsigma, @test sigmaC[j] <= sigmaM[j + k]*q1)
+		end
+	end
+end
+
+@testset "srrqr tests (rank deficient, restricted pivoting)" begin
+	m = 150
+	n = 150
+	epsilon = 1e-12
+	tolparam = 1e-8
+	k0 = 75
+	
+	M = randn(m, n)
+	
+	U, sigmaM, V = svd(M)
+	sigmamin = 1e-8
+
+	for i = k0 + 1:min(m, n)
+		sigmaM[i] = sigmamin
+	end
+	
+	M = U*diagm(sigmaM)*V'
+	
+	maxnorm = 0.
+	for i = 1:size(M, 2)
+		maxnorm = max(maxnorm, norm(M[:, i])^2)
+	end
+	
+	for fparam in [1.001, 1.1, 1.5, 2]
+		for kmaxparam in [20, 100]
+			params_str = "parameters are: f = "*string(fparam)
+			
+			k, perm, Q, R = srrqr(M, f = fparam, tol = tolparam, kmax = kmaxparam)
+			
+			showInfo(params_str, @test k == min(k0, kmaxparam))
+			showInfo(params_str, @test size(Q) == (m, m))
+			showInfo(params_str, @test size(R) == (m, n))
+			showInfo(params_str, @test length(perm) == n)
+			showInfo(params_str, @test norm(M[:, perm] - Q*R)/norm(M) < epsilon)
+			showInfo(params_str, @test norm(Q'*Q - I(m))/m < epsilon)
+			showInfo(params_str, @test norm(tril(R[1:k, 1:k]), -1)/norm(R) < epsilon)
+			
+			A = R[1:k, 1:k]
+			B = R[1:k, k + 1:end]
+			C = R[k + 1:end, k + 1:end]
+			
+			showInfo(params_str, @test maximum(broadcast(abs, inv(A)*B)) <= fparam)
+			
+			sigmaA = svd(A).S
+			sigmaC = svd(C).S
+			q1 = sqrt(1 + fparam*k*(size(M, 2) - k))
+			
+			for i = 1:k
+				params_str_highsigma = params_str*", i = "*string(i)
+				showInfo(params_str_highsigma, @test sigmaA[i] >= sigmaM[i]/q1)
+			end
+			
+			for j = 1:min(size(C, 1), size(C, 2))
+				params_str_lowsigma = params_str*", j = "*string(j)
+				showInfo(params_str_lowsigma, @test sigmaC[j] <= sigmaM[j + k]*q1)
+			end
 		end
 	end
 end

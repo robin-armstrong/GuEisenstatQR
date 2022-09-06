@@ -76,11 +76,7 @@ function updateRank!(j::Int64,
 	# updating gamma
 	
 	for r = 2:length(gamma)
-		gamma[r] = gamma[r] - c[r - 1]^2
-		
-		if(gamma[r] < 0)
-			@warn "gamma["*string(r)*"] is negative.\ngamma["*string(r)*"] = "*string(gamma[r])
-		end
+		gamma[r] = max(gamma[r] - c[r - 1]^2, 0.)
 	end
 	
 	deleteat!(gamma, 1)
@@ -215,20 +211,12 @@ function updateFactors!(i::Int64, j::Int64,
 	# updating gamma
 	gamma[1] = C[1, 1]^2
 	for r = 2:length(gamma)
-		gamma[r] = gamma[r] + c2Bar[r - 1]^2 - c2[r - 1]^2
-		
-		if(gamma[r] < 0)
-			@warn "gamma["*string(r)*"] is negative.\ngamma["*string(r)*"] = "*string(gamma[r])
-		end
+		gamma[r] = max(gamma[r] + c2Bar[r - 1]^2 - c2[r - 1]^2, 0.)
 	end
 	
 	# updating omega
 	omega[k] = 1/gBar^2
 	for r = 1:k - 1
-		omega[r] += (u1[r] + mu*u[r])^2/gBar^2 - u[r]^2/g^2
-		
-		if(omega[r] < 0)
-			@warn "omega["*string(r)*"] is negative.\nomega["*string(r)*"] = "*string(omega[r])
-		end
+		omega[r] = max(omega[r] + (u1[r] + mu*u[r])^2/gBar^2 - u[r]^2/g^2, 0.)
 	end
 end
