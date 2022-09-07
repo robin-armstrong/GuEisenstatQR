@@ -66,14 +66,15 @@ function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, kmax::Integer = m
 	perm[jmax] = 1
 	
 	v = zeros(size(M, 1))	# representation of Q as a Householder reflector
-	v[1] = sign(M[1, jmax])*norm(M[:, jmax])
+	s = M[1, jmax] == 0. ? 1. : sign(M[1, jmax])
+	v[1] = s*norm(M[:, jmax])
 	v = v + M[:, jmax]
 	v /= sqrt(v'*v)
 	
 	Q = Matrix{Float64}(I(size(M, 1))) - 2*v*v'
 	
 	A = Matrix{Float64}(undef, 1, 1)
-	A[1, 1] = -sign(M[1, jmax])*maxnorm
+	A[1, 1] = -s*maxnorm
 	
 	QtM = M - 2*v*(v'*M)
 	
