@@ -45,7 +45,8 @@ function updateRank!(j::Int64,
 	# creating zeros in the [2:end, 1] block of C
 	
 	v = zeros(size(C, 1))	# constructing a Householder reflector
-	v[1] = sign(C[1, 1])*norm(C[:, 1])
+	s = C[1, 1] == 0. ? 1. : sign(C[1, 1])
+	v[1] = s*norm(C[:, 1])
 	v = v + C[:, 1]
 	v /= sqrt(v'*v)
 	
@@ -156,7 +157,8 @@ function updateFactors!(i::Int64, j::Int64,
 	# introducing zeros in the [2:end, 1] block of C
 	
 	v = zeros(size(C, 1))	# constructing a Householder reflector
-	v[1] = sign(C[1, 1])*norm(C[:, 1])
+	s = C[1, 1] == 0. ? 1. : sign(C[1, 1])
+	v[1] = s*norm(C[:, 1])
 	v = v + C[:, 1]
 	v /= sqrt(v'*v)
 	
