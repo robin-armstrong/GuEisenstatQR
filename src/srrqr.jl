@@ -100,7 +100,7 @@ function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, kmax::Integer = m
 	# this loop computes the SRRQR
 	
 	k = 1
-	while(k < L - 1)
+	while(k < L)
 		# this loop makes column pivots to compute a strong rank-revealing QR for the current rank estimate
 		
 		while(true)
@@ -151,11 +151,6 @@ function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, kmax::Integer = m
 			A, B, C, AinvB = updateRank!(jmax, Q, A, B, C, perm, AinvB, gamma, omega)
 			k += 1
 		end
-	end
-	
-	# we make a final update to the rank estimate, if necessary
-	if((k == L - 1) && (kmax == L))
-		k += (gamma[1] > delta ? 1 : 0)
 	end
 	
 	R = [A B; zeros(size(C, 1), size(A, 2)) C]
