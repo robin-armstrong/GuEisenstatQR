@@ -87,7 +87,7 @@ function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, kmax::Integer = m
 	
 	# initializing other data that the algorithm uses
 	
-	AinvB = B/maxnorm
+	AinvB = B/A[1, 1]
 	
 	gamma = Vector{Float64}(undef, size(C, 2))
 	for i = 1:length(gamma)
@@ -102,21 +102,22 @@ function srrqr(M::Matrix{T}; f::Real = 2.0, tol::Real = 1e-12, kmax::Integer = m
 	k = 1
 	while(k < L - 1)
 		# this loop makes column pivots to compute a strong rank-revealing QR for the current rank estimate
+		
 		while(true)
 			ilarge = 0
 			jlarge = 0
 			foundLargeEntry = false
+			rhomax = f^2
 			
-			for i = 1:size(A, 1)
-				!foundLargeEntry || break
-				
+			for i = 1:size(A, 1)				
 				for j = 1:size(B, 2)
 					rho = AinvB[i, j]^2 + gamma[j]*omega[i]
 					
-					if(rho > f^2)
+					if(rho >= rhomax)
 						ilarge = i
 						jlarge = j
 						foundLargeEntry = true
+						rhomax = rho
 					end
 				end
 			end
